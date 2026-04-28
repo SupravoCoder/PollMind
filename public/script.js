@@ -8,8 +8,9 @@
  */
 
 // ═══ GOOGLE GEMINI API CONFIG ═══
+// Set window.GEMINI_API_KEY in public/config.js (see config.example.js — never commit your key)
 const GEMINI_CONFIG = {
-    apiKey: 'AIzaSyBYFN69mX_v0e8EAiYpTs-vXvVTfOmUe0Y',
+    apiKey: window.GEMINI_API_KEY || '',
     model: 'gemini-2.0-flash',
     systemPrompt: `You are PollMind, an expert AI assistant specializing ONLY in Indian elections, democracy, and governance. You were built to educate Indian citizens.
 

@@ -204,9 +204,11 @@ npx serve public -p 3000
 
 ### Optional: Enable Google Gemini AI
 1. Get an API key from [Google AI Studio](https://aistudio.google.com/apikey)
-2. Open `public/script.js`
-3. Set `GEMINI_CONFIG.apiKey = 'your-key-here'`
+2. Copy `public/config.example.js` to `public/config.js`
+3. Replace `'your-gemini-api-key-here'` with your actual key in `config.js`
 4. The chat will now use AI-powered responses instead of local matching
+
+> **Never commit `config.js`** — it is listed in `.gitignore` to keep your key out of version control.
 
 ---
 
