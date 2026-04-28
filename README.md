@@ -5,8 +5,13 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Made%20for-India%20🇮🇳-FF9933?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Powered%20by-Google%20Gemini-4285F4?style=for-the-badge" />
+  <img src="https://img.shields.io/badge/Deployed%20on-Google%20Cloud%20Run-4285F4?style=for-the-badge" />
   <img src="https://img.shields.io/badge/Offline-Ready-138808?style=for-the-badge" />
   <img src="https://img.shields.io/badge/License-GPL%20v3-000080?style=for-the-badge" />
+</p>
+
+<p align="center">
+  🌐 <strong>Live Demo:</strong> <a href="https://pollmind-345168746750.asia-south1.run.app">pollmind-345168746750.asia-south1.run.app</a>
 </p>
 
 ---
@@ -18,7 +23,9 @@
 | **Chosen Vertical** | Election & Democracy Education Assistant |
 | **App Name** | PollMind |
 | **Tech Stack** | Vanilla HTML, CSS, JavaScript (no frameworks) |
-| **Google Services** | Google Gemini API, Web Speech API, Google Fonts |
+| **Google Services** | Google Gemini API, Web Speech API, Google Fonts, Google Cloud Run |
+| **Live URL** | [pollmind-345168746750.asia-south1.run.app](https://pollmind-345168746750.asia-south1.run.app) |
+| **Deployment** | Google Cloud Run (asia-south1) |
 
 ---
 
@@ -79,6 +86,12 @@ PollMind is a **conversational AI assistant** that makes election education inte
 - **File**: `index.html` → `fonts.googleapis.com`
 - **Fonts**: Outfit (headings), Inter (body text)
 - **Purpose**: Professional, readable typography optimized for multilingual content
+
+### 4. Google Cloud Run (Deployment)
+- **File**: `Dockerfile` + `nginx.conf`
+- **Region**: `asia-south1` (Mumbai)
+- **URL**: [pollmind-345168746750.asia-south1.run.app](https://pollmind-345168746750.asia-south1.run.app)
+- **Container**: `nginx:alpine` serving static files on port 8080
 
 ---
 
@@ -177,8 +190,10 @@ PollMind/
 │   ├── style.css       # Indian tricolor themed responsive styles
 │   ├── script.js       # Main app logic + Gemini API + Web Speech API
 │   ├── data.js         # All content data (offline-first, 12 quiz Qs, 11 chat topics)
-│   ├── tests.js        # Automated test suite (100+ assertions)
+│   ├── tests.js        # Automated test suite (126 assertions)
 │   └── test.html       # Test runner page
+├── Dockerfile          # nginx:alpine container for Cloud Run
+├── nginx.conf          # Nginx config (port 8080, gzip, caching)
 ├── LICENSE             # GPL v3
 └── README.md           # Documentation
 ```
@@ -256,7 +271,7 @@ Open `http://localhost:3000/test.html` to run the automated test suite. Tests co
 3. **Offline Priority**: Core features work without internet; Gemini AI is an enhancement, not a requirement
 4. **Neutrality**: The app provides factual information only — no political opinions or party preferences
 5. **Language**: Content is in English with UI labels translated to Hindi, Bengali, and Tamil
-6. **Static Deployment**: No backend needed — can be hosted on GitHub Pages or any static host
+6. **Deployment**: Hosted on Google Cloud Run (Mumbai region) for low-latency access in India
 
 ---
 
