@@ -1,6 +1,25 @@
 /**
  * PollMind — Main Application Logic (Desktop Version)
+ * 
+ * Google Services Used:
+ * 1. Google Gemini API — AI-powered chat responses for election queries
+ * 2. Google Web Speech API — Voice input for accessibility (Chrome built-in)
+ * 3. Google Fonts — Outfit & Inter typefaces via fonts.googleapis.com
  */
+
+// ═══ GOOGLE GEMINI API CONFIG ═══
+const GEMINI_CONFIG = {
+    apiKey: '', // Set your Gemini API key here
+    model: 'gemini-2.0-flash',
+    systemPrompt: `You are PollMind, a friendly and neutral AI assistant that educates Indian citizens about elections, democracy, and governance. 
+Rules:
+- Only answer questions about Indian elections, democracy, voting, and governance.
+- Be factual, neutral, and non-political. Never favor any party.
+- Use simple language. Include emojis for friendliness.
+- Use **bold** for key terms.
+- If the question is not about Indian elections/democracy, politely redirect.
+- Keep answers concise (under 200 words).`
+};
 
 const PAGE_TITLES = {
     home: "Welcome to PollMind",
@@ -60,29 +79,143 @@ function switchScreen(name) {
 }
 
 // ═══ CHAT ═══
+
+/**
+ * Sanitizes user input to prevent XSS attacks.
+ * @param {string} text - Raw user input
+ * @returns {string} Sanitized text safe for innerHTML
+ */
+function sanitize(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+/**
+ * Adds a message bubble to the chat UI.
+ * @param {string} text - Message content (supports **bold** markdown)
+ * @param {boolean} isBot - Whether the message is from the bot
+ */
 function addMessage(text, isBot) {
     const c = document.getElementById('chat-messages');
+    // Remove typing indicator if present
+    const typing = c.querySelector('.msg-typing');
+    if (typing) typing.remove();
     const d = document.createElement('div');
     d.className = 'msg ' + (isBot ? 'msg-bot' : 'msg-user');
-    d.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    if (isBot) {
+        d.innerHTML = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+    } else {
+        d.textContent = text; // User messages are plain text (XSS safe)
+    }
     c.appendChild(d);
     c.scrollTop = c.scrollHeight;
 }
-function findResponse(input) {
+
+/** Shows a typing indicator in the chat. */
+function showTyping() {
+    const c = document.getElementById('chat-messages');
+    const d = document.createElement('div');
+    d.className = 'msg-typing';
+    d.innerHTML = '<span></span><span></span><span></span>';
+    c.appendChild(d);
+    c.scrollTop = c.scrollHeight;
+}
+
+/**
+ * Calls the Google Gemini API for AI-powered responses.
+ * Falls back to local keyword matching if API key is not set or request fails.
+ * @param {string} input - User's question
+ * @returns {Promise<string>} The AI response text
+ */
+async function getGeminiResponse(input) {
+    if (!GEMINI_CONFIG.apiKey) return findLocalResponse(input);
+    try {
+        const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`;
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                system_instruction: { parts: [{ text: GEMINI_CONFIG.systemPrompt }] },
+                contents: [{ parts: [{ text: input }] }],
+                generationConfig: { maxOutputTokens: 500, temperature: 0.7 }
+            })
+        });
+        if (!res.ok) throw new Error(`Gemini API error: ${res.status}`);
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (text) return text;
+        throw new Error('Empty Gemini response');
+    } catch (err) {
+        console.warn('Gemini API fallback:', err.message);
+        return findLocalResponse(input);
+    }
+}
+
+/**
+ * Local keyword-based response matching (offline fallback).
+ * @param {string} input - User's question
+ * @returns {string} Matched response text
+ */
+function findLocalResponse(input) {
     const l = input.toLowerCase();
     for (const e of CHAT_RESPONSES) {
         if (e.keywords.some(k => l.includes(k))) return e.response;
     }
     return DEFAULT_RESPONSE.response;
 }
-function handleChat() {
+
+/** Handles sending a chat message. */
+async function handleChat() {
     const inp = document.getElementById('chat-input');
     const t = inp.value.trim();
     if (!t) return;
     addMessage(t, false);
     inp.value = '';
     state.stats.chats++; state.stats.xp += 5; saveStats(); updateProfile();
-    setTimeout(() => addMessage(findResponse(t), true), 400);
+    showTyping();
+    const response = await getGeminiResponse(t);
+    addMessage(response, true);
+}
+
+// ═══ GOOGLE WEB SPEECH API (Voice Input) ═══
+
+/**
+ * Initializes Google Chrome's Web Speech API for voice recognition.
+ * This uses Google's cloud speech recognition service built into Chrome.
+ */
+function initVoiceInput() {
+    const voiceBtn = document.getElementById('voice-btn');
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!SpeechRecognition) {
+        voiceBtn.title = 'Voice input not supported in this browser';
+        voiceBtn.style.opacity = '0.3';
+        voiceBtn.disabled = true;
+        return;
+    }
+    const recognition = new SpeechRecognition();
+    recognition.lang = state.lang === 'hi' ? 'hi-IN' : state.lang === 'bn' ? 'bn-IN' : state.lang === 'ta' ? 'ta-IN' : 'en-IN';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    voiceBtn.addEventListener('click', () => {
+        if (voiceBtn.classList.contains('recording')) {
+            recognition.stop();
+            return;
+        }
+        recognition.lang = state.lang === 'hi' ? 'hi-IN' : state.lang === 'bn' ? 'bn-IN' : state.lang === 'ta' ? 'ta-IN' : 'en-IN';
+        recognition.start();
+        voiceBtn.classList.add('recording');
+    });
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript;
+        document.getElementById('chat-input').value = transcript;
+        voiceBtn.classList.remove('recording');
+        handleChat();
+    };
+    recognition.onerror = () => voiceBtn.classList.remove('recording');
+    recognition.onend = () => voiceBtn.classList.remove('recording');
 }
 function renderQuickReplies() {
     const c = document.getElementById('quick-replies');
@@ -312,7 +445,8 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('chat-input').addEventListener('keydown', e => { if (e.key==='Enter') handleChat(); });
     renderQuickReplies();
     renderTopicSidebar();
-    addMessage("Namaste! 🙏 I'm **PollMind**, your AI guide to Indian elections and democracy.\n\nAsk me anything about voting, EVMs, Voter ID, or how the Indian government works!\n\nTap a topic or type your question.", true);
+    initVoiceInput();
+    addMessage("Namaste! 🙏 I'm **PollMind**, your AI guide to Indian elections and democracy.\n\nAsk me anything about voting, EVMs, Voter ID, or how the Indian government works!\n\n" + (GEMINI_CONFIG.apiKey ? '🤖 Powered by **Google Gemini AI**' : '💡 Tap a topic or type your question.'), true);
 
     // Language
     document.getElementById('lang-btn').addEventListener('click', () => document.getElementById('lang-dropdown').classList.toggle('hidden'));
