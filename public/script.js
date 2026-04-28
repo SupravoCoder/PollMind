@@ -8,8 +8,9 @@
  */
 
 // ═══ GOOGLE GEMINI API CONFIG ═══
+// Set window.GEMINI_API_KEY in public/config.js (see config.example.js — never commit your key)
 const GEMINI_CONFIG = {
-    apiKey: 'AIzaSyBYFN69mX_v0e8EAiYpTs-vXvVTfOmUe0Y',
+    apiKey: window.GEMINI_API_KEY || '',
     model: 'gemini-2.0-flash',
     systemPrompt: `You are PollMind, an expert AI assistant specializing ONLY in Indian elections, democracy, and governance. You were built to educate Indian citizens.
 
@@ -153,7 +154,10 @@ function showTyping() {
  * @returns {Promise<string>} The AI response text
  */
 async function getGeminiResponse(input) {
-    if (!GEMINI_CONFIG.apiKey) return findLocalResponse(input);
+    if (!GEMINI_CONFIG.apiKey) {
+        console.warn('PollMind: Gemini API key not set. Copy public/config.example.js to public/config.js and add your key to enable AI responses.');
+        return findLocalResponse(input);
+    }
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`;
     const body = JSON.stringify({
         system_instruction: { parts: [{ text: GEMINI_CONFIG.systemPrompt }] },
