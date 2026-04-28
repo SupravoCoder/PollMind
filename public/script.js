@@ -154,7 +154,10 @@ function showTyping() {
  * @returns {Promise<string>} The AI response text
  */
 async function getGeminiResponse(input) {
-    if (!GEMINI_CONFIG.apiKey) return findLocalResponse(input);
+    if (!GEMINI_CONFIG.apiKey) {
+        console.warn('PollMind: Gemini API key not set. Copy public/config.example.js to public/config.js and add your key to enable AI responses.');
+        return findLocalResponse(input);
+    }
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`;
     const body = JSON.stringify({
         system_instruction: { parts: [{ text: GEMINI_CONFIG.systemPrompt }] },
