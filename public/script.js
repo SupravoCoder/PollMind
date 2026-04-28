@@ -9,7 +9,7 @@
 
 // ═══ GOOGLE GEMINI API CONFIG ═══
 const GEMINI_CONFIG = {
-    apiKey: '', // Set your Gemini API key here
+    apiKey: 'AIzaSyBYFN69mX_v0e8EAiYpTs-vXvVTfOmUe0Y',
     model: 'gemini-2.0-flash',
     systemPrompt: `You are PollMind, a friendly and neutral AI assistant that educates Indian citizens about elections, democracy, and governance. 
 Rules:
