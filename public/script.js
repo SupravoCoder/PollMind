@@ -147,32 +147,34 @@ function showTyping() {
 
 /**
  * Calls the Google Gemini API for AI-powered responses.
- * Falls back to local keyword matching if API key is not set or request fails.
+ * Includes retry with backoff for 429 rate limits.
+ * Falls back to local keyword matching if API key is not set or all retries fail.
  * @param {string} input - User's question
  * @returns {Promise<string>} The AI response text
  */
 async function getGeminiResponse(input) {
     if (!GEMINI_CONFIG.apiKey) return findLocalResponse(input);
-    try {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`;
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                system_instruction: { parts: [{ text: GEMINI_CONFIG.systemPrompt }] },
-                contents: [{ parts: [{ text: input }] }],
-                generationConfig: { maxOutputTokens: 500, temperature: 0.7 }
-            })
-        });
-        if (!res.ok) throw new Error(`Gemini API error: ${res.status}`);
-        const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) return text;
-        throw new Error('Empty Gemini response');
-    } catch (err) {
-        console.warn('Gemini API fallback:', err.message);
-        return findLocalResponse(input);
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`;
+    const body = JSON.stringify({
+        system_instruction: { parts: [{ text: GEMINI_CONFIG.systemPrompt }] },
+        contents: [{ parts: [{ text: input }] }],
+        generationConfig: { maxOutputTokens: 500, temperature: 0.7 }
+    });
+    for (let attempt = 0; attempt < 3; attempt++) {
+        try {
+            if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * attempt));
+            const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
+            if (res.status === 429) { console.warn(`Gemini rate limited, retry ${attempt + 1}/3...`); continue; }
+            if (!res.ok) throw new Error(`Gemini API error: ${res.status}`);
+            const data = await res.json();
+            const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) return text;
+            throw new Error('Empty Gemini response');
+        } catch (err) {
+            if (attempt === 2) { console.warn('Gemini API fallback:', err.message); return findLocalResponse(input); }
+        }
     }
+    return findLocalResponse(input);
 }
 
 /**
