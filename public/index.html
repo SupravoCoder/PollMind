@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="PollMind — Your AI guide to Indian elections, democracy, and voting. Learn about EVMs, Voter ID, Lok Sabha, and more.">
+    <meta name="theme-color" content="#0f172a">
+    <title>PollMind — Indian Election AI Guide</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="app">
+
+        <!-- ═══════ LEFT SIDEBAR ═══════ -->
+        <aside id="sidebar">
+            <div class="sidebar-logo">
+                <i class="fa-solid fa-check-to-slot"></i>
+                <span>PollMind</span>
+            </div>
+            <nav id="sidebar-nav" role="tablist" aria-label="Main navigation">
+                <button class="sidebar-item active" data-screen="home" role="tab" aria-selected="true">
+                    <i class="fa-solid fa-house"></i>
+                    <span>Home</span>
+                </button>
+                <button class="sidebar-item" data-screen="chat" role="tab" aria-selected="false">
+                    <i class="fa-solid fa-comment-dots"></i>
+                    <span data-label="chat">Chat</span>
+                </button>
+                <button class="sidebar-item" data-screen="learn" role="tab" aria-selected="false">
+                    <i class="fa-solid fa-book-open"></i>
+                    <span data-label="learn">Learn</span>
+                </button>
+                <button class="sidebar-item" data-screen="quiz" role="tab" aria-selected="false">
+                    <i class="fa-solid fa-brain"></i>
+                    <span data-label="quiz">Quiz</span>
+                </button>
+                <button class="sidebar-item" data-screen="election" role="tab" aria-selected="false">
+                    <i class="fa-solid fa-check-to-slot"></i>
+                    <span data-label="election">Election</span>
+                </button>
+                <button class="sidebar-item" data-screen="profile" role="tab" aria-selected="false">
+                    <i class="fa-solid fa-user"></i>
+                    <span data-label="profile">Profile</span>
+                </button>
+            </nav>
+            <div class="sidebar-footer">
+                <button id="lang-btn" class="sidebar-toggle" aria-label="Change language" title="Language">
+                    <i class="fa-solid fa-globe"></i>
+                    <span data-label="language">Language</span>
+                </button>
+            </div>
+        </aside>
+
+        <!-- ═══════ MAIN CONTENT ═══════ -->
+        <div id="main-area">
+
+            <!-- Top Bar -->
+            <header id="top-bar">
+                <h1 id="page-title" class="page-title">Welcome to PollMind</h1>
+                <div class="top-bar-right">
+
+                    <div id="lang-dropdown" class="lang-dropdown hidden" role="menu">
+                        <button class="lang-option active" data-lang="en" role="menuitem">English</button>
+                        <button class="lang-option" data-lang="hi" role="menuitem">हिन्दी</button>
+                        <button class="lang-option" data-lang="bn" role="menuitem">বাংলা</button>
+                        <button class="lang-option" data-lang="ta" role="menuitem">தமிழ்</button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- ═══════ SCREEN: HOME ═══════ -->
+            <section id="screen-home" class="screen active" aria-label="Home">
+                <div class="home-container">
+                    <div class="home-hero">
+                        <div class="home-hero-badge">🇮🇳 Made for Indian Citizens</div>
+                        <h2 class="home-title">Your AI Guide to <span class="gradient-text">Indian Elections</span></h2>
+                        <p class="home-subtitle">Understand democracy, learn the voting process, bust myths, and become an informed citizen — all in one place.</p>
+                        <div class="home-cta-group">
+                            <button class="primary-btn home-cta" id="home-start-chat"><i class="fa-solid fa-comment-dots"></i> Start Chatting</button>
+                            <button class="secondary-btn home-cta" id="home-start-learn"><i class="fa-solid fa-book-open"></i> Explore Topics</button>
+                        </div>
+                    </div>
+                    <div class="home-features">
+                        <div class="home-feature-card">
+                            <div class="home-feature-icon" style="background:linear-gradient(135deg,#FF9933,#E67A00)"><i class="fa-solid fa-robot"></i></div>
+                            <h4>AI Chat Assistant</h4>
+                            <p>Ask any question about Indian elections, EVMs, Voter ID, or governance — get instant, accurate answers.</p>
+                        </div>
+                        <div class="home-feature-card">
+                            <div class="home-feature-icon" style="background:linear-gradient(135deg,#0ea5e9,#3b82f6)"><i class="fa-solid fa-graduation-cap"></i></div>
+                            <h4>Interactive Learning</h4>
+                            <p>Visual timelines, governance role cards, and myth-busting guides to deepen your understanding.</p>
+                        </div>
+                        <div class="home-feature-card">
+                            <div class="home-feature-icon" style="background:linear-gradient(135deg,#f43f5e,#ec4899)"><i class="fa-solid fa-brain"></i></div>
+                            <h4>Quiz Arena</h4>
+                            <p>Test your knowledge with randomized quizzes. Earn XP, build streaks, and level up!</p>
+                        </div>
+                        <div class="home-feature-card">
+                            <div class="home-feature-icon" style="background:linear-gradient(135deg,#10b981,#059669)"><i class="fa-solid fa-person-booth"></i></div>
+                            <h4>Election Simulator</h4>
+                            <p>Experience a mock election using the FPTP system. Vote, see results, and understand how winners are decided.</p>
+                        </div>
+                        <div class="home-feature-card">
+                            <div class="home-feature-icon" style="background:linear-gradient(135deg,#f59e0b,#d97706)"><i class="fa-solid fa-check-to-slot"></i></div>
+                            <h4>Election Day Guide</h4>
+                            <p>Step-by-step voting guide, required document checklist, and polling day tips.</p>
+                        </div>
+                        <div class="home-feature-card">
+                            <div class="home-feature-icon" style="background:linear-gradient(135deg,#8b5cf6,#6d28d9)"><i class="fa-solid fa-globe"></i></div>
+                            <h4>Multilingual Support</h4>
+                            <p>Available in English, Hindi, Bengali, and Tamil — with more languages coming soon.</p>
+                        </div>
+                    </div>
+                    <div class="home-footer-note">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        <span>PollMind is neutral, non-political, and fact-based. Built for education, not persuasion.</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════ SCREEN: CHAT ═══════ -->
+            <section id="screen-chat" class="screen" aria-label="Chat with PollMind">
+                <div class="chat-layout">
+                    <div class="chat-main">
+                        <div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div>
+                        <div id="quick-replies" class="quick-replies"></div>
+                        <div class="chat-input-bar">
+                            <input type="text" id="chat-input" autocomplete="off" aria-label="Type your question">
+                            <button id="chat-send" class="send-btn" aria-label="Send message">
+                                <i class="fa-solid fa-paper-plane"></i>
+                                <span>Send</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="chat-sidebar">
+                        <h3>Popular Topics</h3>
+                        <div id="topic-list" class="topic-list"></div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════ SCREEN: LEARN ═══════ -->
+            <section id="screen-learn" class="screen" aria-label="Learn about elections">
+                <div class="screen-header">
+                    <h2 class="screen-title" data-label="learnTitle">Learn Hub</h2>
+                    <p class="screen-subtitle">Explore topics about Indian democracy, governance, and elections</p>
+                </div>
+                <div class="learn-grid">
+                    <button class="learn-card" data-topic="process" aria-label="Learn about the election process">
+                        <div class="learn-card-icon" style="background:linear-gradient(135deg,#FF9933,#E67A00)">
+                            <i class="fa-solid fa-landmark"></i>
+                        </div>
+                        <div class="learn-card-text">
+                            <span class="learn-card-title" data-label="process">Election Process</span>
+                            <small>6 steps from registration to results</small>
+                        </div>
+                    </button>
+                    <button class="learn-card" data-topic="roles" aria-label="Learn about governance roles">
+                        <div class="learn-card-icon" style="background:linear-gradient(135deg,#0ea5e9,#3b82f6)">
+                            <i class="fa-solid fa-users"></i>
+                        </div>
+                        <div class="learn-card-text">
+                            <span class="learn-card-title" data-label="roles">Governance Roles</span>
+                            <small>MP, MLA, Sarpanch and more</small>
+                        </div>
+                    </button>
+                    <button class="learn-card" data-topic="myths" aria-label="Myth Busters">
+                        <div class="learn-card-icon" style="background:linear-gradient(135deg,#f43f5e,#ec4899)">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </div>
+                        <div class="learn-card-text">
+                            <span class="learn-card-title" data-label="mythBuster">Myth Busters</span>
+                            <small>Separate facts from fiction</small>
+                        </div>
+                    </button>
+                    <button class="learn-card" data-topic="simulation" aria-label="Election Simulation">
+                        <div class="learn-card-icon" style="background:linear-gradient(135deg,#f59e0b,#ef4444)">
+                            <i class="fa-solid fa-play"></i>
+                        </div>
+                        <div class="learn-card-text">
+                            <span class="learn-card-title" data-label="simulation">Election Simulation</span>
+                            <small>Experience mock voting</small>
+                        </div>
+                    </button>
+                </div>
+                <div id="learn-content" class="learn-content hidden"></div>
+            </section>
+
+            <!-- ═══════ SCREEN: QUIZ ═══════ -->
+            <section id="screen-quiz" class="screen" aria-label="Quiz Arena">
+                <div class="screen-header">
+                    <h2 class="screen-title" data-label="quizTitle">Quiz Arena</h2>
+                    <p class="screen-subtitle">Test your knowledge of Indian elections and democracy</p>
+                </div>
+                <div id="quiz-start" class="quiz-start">
+                    <div class="quiz-hero-card">
+                        <div class="quiz-hero-icon"><i class="fa-solid fa-brain"></i></div>
+                        <h3>Ready to Test Your Knowledge?</h3>
+                        <p>Answer 5 questions about Indian elections and democracy. Earn XP and build your streak!</p>
+                        <div class="quiz-stats">
+                            <div class="quiz-stat">
+                                <i class="fa-solid fa-fire"></i>
+                                <span id="streak-display">0</span>
+                                <small data-label="streak">Streak</small>
+                            </div>
+                            <div class="quiz-stat">
+                                <i class="fa-solid fa-trophy"></i>
+                                <span id="best-score-display">0</span>
+                                <small>Best</small>
+                            </div>
+                        </div>
+                        <button id="start-quiz-btn" class="primary-btn" data-label="startQuiz">Start Quiz</button>
+                    </div>
+                </div>
+                <div id="quiz-play" class="quiz-play hidden">
+                    <div class="quiz-card">
+                        <div class="quiz-progress-bar"><div id="quiz-progress-fill" class="quiz-progress-fill"></div></div>
+                        <div class="quiz-header">
+                            <span id="quiz-counter">1/5</span>
+                            <span id="quiz-score">Score: 0</span>
+                        </div>
+                        <div id="quiz-question" class="quiz-question"></div>
+                        <div id="quiz-options" class="quiz-options" role="radiogroup"></div>
+                        <div id="quiz-feedback" class="quiz-feedback hidden"></div>
+                        <button id="quiz-next" class="primary-btn hidden" data-label="nextQ">Next</button>
+                    </div>
+                </div>
+                <div id="quiz-results" class="quiz-results hidden">
+                    <div class="quiz-hero-card">
+                        <div id="quiz-results-icon" class="quiz-results-icon"></div>
+                        <h3 id="quiz-results-title"></h3>
+                        <p id="quiz-results-score"></p>
+                        <button id="quiz-retry" class="primary-btn">Play Again</button>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ═══════ SCREEN: ELECTION ═══════ -->
+            <section id="screen-election" class="screen" aria-label="Election Mode">
+                <div class="screen-header">
+                    <h2 class="screen-title" data-label="electionTitle">Election Mode</h2>
+                    <p class="screen-subtitle">Everything you need to know before, during, and after voting</p>
+                </div>
+                <div class="election-tabs">
+                    <button class="election-tab active" data-tab="guide" data-label="votingGuide">Voting Guide</button>
+                    <button class="election-tab" data-tab="docs" data-label="documents">Documents</button>
+                    <button class="election-tab" data-tab="tips" data-label="tips">Tips</button>
+                </div>
+                <div id="election-content" class="election-content"></div>
+            </section>
+
+            <!-- ═══════ SCREEN: PROFILE ═══════ -->
+            <section id="screen-profile" class="screen" aria-label="Your Profile">
+                <div class="screen-header">
+                    <h2 class="screen-title" data-label="profileTitle">Your Profile</h2>
+                    <p class="screen-subtitle">Track your learning progress and customize settings</p>
+                </div>
+                <div class="profile-layout">
+                    <div class="profile-card">
+                        <div class="profile-avatar"><i class="fa-solid fa-user-graduate"></i></div>
+                        <div class="profile-level" id="profile-level">
+                            <span class="level-badge beginner" data-label="beginner">Beginner</span>
+                        </div>
+                        <div class="profile-xp-bar"><div id="profile-xp-fill" class="profile-xp-fill" style="width:0%"></div></div>
+                        <small id="profile-xp-text">0 / 100 XP</small>
+                    </div>
+                    <div class="profile-stats">
+                        <div class="profile-stat-card">
+                            <i class="fa-solid fa-comments"></i>
+                            <span id="stat-chats">0</span>
+                            <small>Questions Asked</small>
+                        </div>
+                        <div class="profile-stat-card">
+                            <i class="fa-solid fa-check-circle"></i>
+                            <span id="stat-quizzes">0</span>
+                            <small>Quizzes Taken</small>
+                        </div>
+                        <div class="profile-stat-card">
+                            <i class="fa-solid fa-fire"></i>
+                            <span id="stat-streak">0</span>
+                            <small data-label="streak">Streak</small>
+                        </div>
+                    </div>
+                    <div class="profile-section">
+                        <h3 data-label="language">Language</h3>
+                        <div class="language-grid" id="language-grid"></div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+
+    <script src="data.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
