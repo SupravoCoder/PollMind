@@ -62,7 +62,7 @@
             <header id="top-bar">
                 <h1 id="page-title" class="page-title">Welcome to PollMind</h1>
                 <div class="top-bar-right">
-
+                    <div id="google_translate_element"></div>
                     <div id="lang-dropdown" class="lang-dropdown hidden" role="menu">
                         <button class="lang-option active" data-lang="en" role="menuitem">English</button>
                         <button class="lang-option" data-lang="hi" role="menuitem">हिन्दी</button>
@@ -298,8 +298,16 @@
         </div>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.9.0/firebase-firestore-compat.js"></script>
     <script src="data.js"></script>
     <script src="config.js" onerror="console.warn('PollMind: config.js not found. Copy config.example.js to config.js and add your Gemini API key to enable AI features.')"></script>
     <script src="script.js"></script>
+    <script type="text/javascript">
+        function googleTranslateElementInit() {
+            new google.translate.TranslateElement({pageLanguage: 'en'}, 'google_translate_element');
+        }
+    </script>
+    <script type="text/javascript" src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 </body>
 </html>

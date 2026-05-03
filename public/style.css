@@ -148,7 +148,6 @@ button{cursor:pointer;font-family:inherit;}
 .role-title{font-weight:700;font-size:1.05rem;}
 .role-level{font-size:.75rem;color:var(--text-muted);background:rgba(255,255,255,.05);padding:3px 10px;border-radius:6px;}
 .role-desc{font-size:.92rem;color:var(--text-muted);line-height:1.6;}
-.role-eli10{font-size:.88rem;color:var(--accent);margin-top:8px;font-style:italic;}
 
 .myth-card{background:rgba(0,0,0,.2);border-radius:12px;padding:20px;margin-bottom:12px;border-left:4px solid var(--danger);}
 .myth-label{font-size:.72rem;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--danger);margin-bottom:4px;}

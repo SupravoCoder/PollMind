@@ -66,7 +66,39 @@ const state = {
     quiz: { current: 0, score: 0, questions: [], answered: false },
     stats: JSON.parse(localStorage.getItem('pm-stats') || '{"chats":0,"quizzes":0,"streak":0,"bestScore":0,"xp":0}')
 };
-function saveStats() { localStorage.setItem('pm-stats', JSON.stringify(state.stats)); }
+
+// ═══ FIREBASE SETUP ═══
+let db = null;
+if (window.FIREBASE_CONFIG && Object.keys(window.FIREBASE_CONFIG).length > 0) {
+    firebase.initializeApp(window.FIREBASE_CONFIG);
+    db = firebase.firestore();
+}
+
+async function saveStats() {
+    localStorage.setItem('pm-stats', JSON.stringify(state.stats));
+    if (db) {
+        try {
+            await db.collection('users').doc('local-user').set(state.stats, { merge: true });
+        } catch (e) {
+            console.error("Firebase save error:", e);
+        }
+    }
+}
+
+async function loadStatsFromFirebase() {
+    if (db) {
+        try {
+            const doc = await db.collection('users').doc('local-user').get();
+            if (doc.exists) {
+                state.stats = doc.data();
+                localStorage.setItem('pm-stats', JSON.stringify(state.stats));
+                updateProfile();
+            }
+        } catch (e) {
+            console.error("Firebase load error:", e);
+        }
+    }
+}
 
 // ═══ LANGUAGE ═══
 function label(key) {
@@ -498,4 +530,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     applyLanguage();
     updateProfile();
+    
+    // Load from Firebase if available
+    loadStatsFromFirebase();
 });
