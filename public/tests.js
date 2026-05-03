@@ -1,3 +1,5 @@
+"use strict";
+
 /**
  * PollMind — Test Suite
  * 
@@ -97,6 +99,17 @@ function runTests() {
         assert(m.myth && m.myth.length > 10, `Myth present: ${m.myth.substring(0, 30)}...`);
         assert(m.fact && m.fact.length > 20, `Fact present for: ${m.myth.substring(0, 30)}...`);
     }
+
+    // ── APP CONSTANTS ──
+    console.log('\n── App Constants ──');
+    assert(typeof MAX_CHAT_HISTORY === 'number', 'MAX_CHAT_HISTORY is defined');
+    assert(typeof XP_CHAT_MESSAGE === 'number', 'XP_CHAT_MESSAGE is defined');
+    assert(typeof GEMINI_MAX_TOKENS === 'number', 'GEMINI_MAX_TOKENS is defined');
+
+    // ── ANALYTICS INTEGRATION ──
+    console.log('\n── Analytics Integration ──');
+    assert(typeof logAnalyticsEvent === 'function', 'logAnalyticsEvent() function exists');
+    assert(typeof saveQuizHistory === 'function', 'saveQuizHistory() function exists');
 
     // ── RESULTS ──
     console.log('\n═══════════════════════════════════');
