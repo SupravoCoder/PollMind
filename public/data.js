@@ -1,3 +1,5 @@
+"use strict";
+
 /**
  * PollMind — All application data
  * This file contains all content for offline-first functionality.
@@ -7,6 +9,12 @@
 // ═══════════════════════════════════════════════
 //  MULTILINGUAL LABELS
 // ═══════════════════════════════════════════════
+
+/**
+ * Multilingual UI label definitions.
+ * Each language entry provides translated labels for all UI elements.
+ * @type {Object<string, {name: string, labels: Object<string, string>}>}
+ */
 const LANGUAGES = {
     en: {
         name: "English",
@@ -20,7 +28,6 @@ const LANGUAGES = {
             votingGuide: "Voting Guide", documents: "Documents", tips: "Tips",
             mythBuster: "Myth Busters", roles: "Governance Roles", process: "Election Process",
             simulation: "Election Simulation", dailyQuiz: "Daily Quiz",
-            civicChallenge: "Civic Challenge", language: "Language", progress: "Progress",
             civicChallenge: "Civic Challenge", language: "Language", progress: "Progress",
             beginner: "Beginner", intermediate: "Intermediate", advanced: "Advanced",
             correct: "Correct!", incorrect: "Not quite!",
@@ -39,7 +46,6 @@ const LANGUAGES = {
             mythBuster: "मिथक vs तथ्य", roles: "शासन की भूमिकाएँ", process: "चुनाव प्रक्रिया",
             simulation: "चुनाव सिमुलेशन", dailyQuiz: "दैनिक क्विज़",
             civicChallenge: "नागरिक चुनौती", language: "भाषा", progress: "प्रगति",
-            civicChallenge: "नागरिक चुनौती", language: "भाषा", progress: "प्रगति",
             beginner: "शुरुआती", intermediate: "मध्यम", advanced: "उन्नत",
             correct: "सही!", incorrect: "गलत!",
         }
@@ -56,7 +62,6 @@ const LANGUAGES = {
             votingGuide: "ভোট গাইড", documents: "কাগজপত্র", tips: "টিপস",
             mythBuster: "মিথ vs সত্য", roles: "শাসন ভূমিকা", process: "নির্বাচন প্রক্রিয়া",
             simulation: "নির্বাচন সিমুলেশন", dailyQuiz: "দৈনিক কুইজ",
-            civicChallenge: "নাগরিক চ্যালেঞ্জ", language: "ভাষা", progress: "অগ্রগতি",
             civicChallenge: "নাগরিক চ্যালেঞ্জ", language: "ভাষা", progress: "অগ্রগতি",
             beginner: "শিক্ষানবিস", intermediate: "মাঝারি", advanced: "উন্নত",
             correct: "সঠিক!", incorrect: "ভুল!",
@@ -75,7 +80,6 @@ const LANGUAGES = {
             mythBuster: "கட்டுக்கதை vs உண்மை", roles: "ஆட்சி பாத்திரங்கள்", process: "தேர்தல் செயல்முறை",
             simulation: "தேர்தல் உருவகப்படுத்துதல்", dailyQuiz: "தினசரி வினாடி",
             civicChallenge: "குடிமை சவால்", language: "மொழி", progress: "முன்னேற்றம்",
-            civicChallenge: "குடிமை சவால்", language: "மொழி", progress: "முன்னேற்றம்",
             beginner: "தொடக்கநிலை", intermediate: "இடைநிலை", advanced: "மேம்பட்ட",
             correct: "சரி!", incorrect: "தவறு!",
         }
@@ -85,6 +89,12 @@ const LANGUAGES = {
 // ═══════════════════════════════════════════════
 //  CHAT RESPONSES (AI-like keyword matching)
 // ═══════════════════════════════════════════════
+
+/**
+ * Keyword-based chat response database for offline fallback.
+ * Each entry maps a set of trigger keywords to a pre-written response.
+ * @type {Array<{keywords: string[], response: string}>}
+ */
 const CHAT_RESPONSES = [
     {
         keywords: ["how", "voting", "work", "vote", "kaise", "কিভাবে", "எப்படி"],
@@ -132,6 +142,10 @@ const CHAT_RESPONSES = [
     }
 ];
 
+/**
+ * Default response when no keyword match is found.
+ * @type {{response: string}}
+ */
 const DEFAULT_RESPONSE = {
     response: "That's an interesting question! 🤔 I'm best at answering questions about:\n\n🗳️ Indian elections & voting\n🏛️ Parliament, MPs, MLAs\n📜 Election Commission\n🪪 Voter ID & registration\n📊 How results work\n\nTry asking me one of these topics!"
 };
@@ -139,6 +153,11 @@ const DEFAULT_RESPONSE = {
 // ═══════════════════════════════════════════════
 //  QUICK REPLY CHIPS
 // ═══════════════════════════════════════════════
+
+/**
+ * Predefined quick reply suggestions shown as chips in the chat UI.
+ * @type {string[]}
+ */
 const QUICK_REPLIES = [
     "How does voting work?",
     "What is an EVM?",
@@ -153,6 +172,12 @@ const QUICK_REPLIES = [
 // ═══════════════════════════════════════════════
 //  QUIZ QUESTIONS
 // ═══════════════════════════════════════════════
+
+/**
+ * Bank of quiz questions on Indian elections and democracy.
+ * Each question has exactly 4 options, a correct answer index, and an explanation.
+ * @type {Array<{question: string, options: string[], correct: number, explanation: string}>}
+ */
 const QUIZ_QUESTIONS = [
     {
         question: "What is the minimum age to vote in India?",
@@ -231,6 +256,11 @@ const QUIZ_QUESTIONS = [
 // ═══════════════════════════════════════════════
 //  MYTH BUSTERS
 // ═══════════════════════════════════════════════
+
+/**
+ * Election myth-busting entries pairing common myths with verified facts.
+ * @type {Array<{myth: string, fact: string, icon: string}>}
+ */
 const MYTHS = [
     {
         myth: "EVMs can be hacked using WiFi or Bluetooth",
@@ -267,6 +297,11 @@ const MYTHS = [
 // ═══════════════════════════════════════════════
 //  ELECTION STEPS (Voting Guide)
 // ═══════════════════════════════════════════════
+
+/**
+ * Step-by-step voting guide organized by phase (before, during, after polling).
+ * @type {Array<{title: string, icon: string, items: string[]}>}
+ */
 const VOTING_GUIDE_STEPS = [
     {
         title: "Before Polling Day",
@@ -310,6 +345,10 @@ const VOTING_GUIDE_STEPS = [
     }
 ];
 
+/**
+ * List of accepted photo ID documents for voting in India.
+ * @type {Array<{name: string, icon: string, primary: boolean}>}
+ */
 const REQUIRED_DOCUMENTS = [
     { name: "Voter ID Card (EPIC)", icon: "fa-id-card", primary: true },
     { name: "Aadhaar Card", icon: "fa-fingerprint", primary: false },
@@ -324,6 +363,11 @@ const REQUIRED_DOCUMENTS = [
 // ═══════════════════════════════════════════════
 //  GOVERNANCE ROLES
 // ═══════════════════════════════════════════════
+
+/**
+ * Key governance roles in India's democratic hierarchy.
+ * @type {Array<{title: string, level: string, icon: string, color: string, description: string}>}
+ */
 const GOVERNANCE_ROLES = [
     {
         title: "Sarpanch",
@@ -365,6 +409,11 @@ const GOVERNANCE_ROLES = [
 // ═══════════════════════════════════════════════
 //  ELECTION SIMULATION DATA
 // ═══════════════════════════════════════════════
+
+/**
+ * Fictional candidates for the FPTP election simulation feature.
+ * @type {Array<{name: string, party: string, symbol: string, color: string, manifesto: string}>}
+ */
 const SIM_CANDIDATES = [
     { name: "Priya Sharma", party: "People's Progress Party", symbol: "🌻", color: "#f59e0b", manifesto: "Focus on education reform and digital literacy" },
     { name: "Rajesh Kumar", party: "National Development Front", symbol: "🔵", color: "#3b82f6", manifesto: "Infrastructure development and job creation" },

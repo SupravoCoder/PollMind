@@ -1,11 +1,39 @@
+"use strict";
+
 /**
  * PollMind — Main Application Logic (Desktop Version)
- * 
+ *
  * Google Services Used:
  * 1. Google Gemini API — AI-powered chat responses for election queries
  * 2. Google Web Speech API — Voice input for accessibility (Chrome built-in)
  * 3. Google Fonts — Outfit & Inter typefaces via fonts.googleapis.com
+ * 4. Firebase Firestore — Cloud data sync with offline persistence
+ * 5. Firebase Analytics — Usage tracking and engagement metrics
+ * 6. Google Translate — Automatic page translation widget
+ * 7. Google Cloud Run — Container deployment (asia-south1)
  */
+
+// ═══ APPLICATION CONSTANTS ═══
+/** @constant {number} Maximum chat history entries (user + model messages) */
+const MAX_CHAT_HISTORY = 20;
+/** @constant {number} XP awarded per chat message sent */
+const XP_CHAT_MESSAGE = 5;
+/** @constant {number} XP awarded per correct quiz answer */
+const XP_QUIZ_CORRECT = 10;
+/** @constant {number} XP awarded for completing an election simulation vote */
+const XP_SIMULATION_VOTE = 15;
+/** @constant {number} Maximum output tokens for Gemini API responses */
+const GEMINI_MAX_TOKENS = 500;
+/** @constant {number} Minimum correct answers to maintain quiz streak */
+const STREAK_THRESHOLD = 3;
+/** @constant {number} Number of questions per quiz session */
+const QUESTIONS_PER_QUIZ = 5;
+/** @constant {number} Maximum retry attempts for Gemini API calls */
+const GEMINI_MAX_RETRIES = 3;
+/** @constant {number} Maximum allowed length for chat input */
+const CHAT_INPUT_MAX_LENGTH = 500;
+/** @constant {number} Gemini API temperature for response generation */
+const GEMINI_TEMPERATURE = 0.7;
 
 // ═══ GOOGLE GEMINI API CONFIG ═══
 // Set window.GEMINI_API_KEY in public/config.js (see config.example.js — never commit your key)
@@ -45,6 +73,10 @@ STRICT RULES:
 - Always be factual — cite the Constitution article or law when possible`
 };
 
+/**
+ * Human-readable titles for each application screen.
+ * @type {Object<string, string>}
+ */
 const PAGE_TITLES = {
     home: "Welcome to PollMind",
     chat: "Chat with PollMind",
@@ -54,12 +86,22 @@ const PAGE_TITLES = {
     profile: "Your Profile"
 };
 
+/**
+ * Font Awesome icon classes for quick-reply topic buttons.
+ * @type {string[]}
+ */
 const TOPIC_ICONS = [
     "fa-person-booth", "fa-microchip", "fa-user-group",
     "fa-id-card", "fa-ban", "fa-landmark", "fa-house-chimney", "fa-child"
 ];
 
 // ═══ STATE ═══
+
+/**
+ * Central application state object.
+ * Manages language, current screen, quiz progress, and persistent stats.
+ * @type {{lang: string, screen: string, quiz: Object, stats: Object}}
+ */
 const state = {
     lang: localStorage.getItem('pm-lang') || 'en',
     screen: 'chat',
@@ -67,43 +109,175 @@ const state = {
     stats: JSON.parse(localStorage.getItem('pm-stats') || '{"chats":0,"quizzes":0,"streak":0,"bestScore":0,"xp":0}')
 };
 
-// ═══ FIREBASE SETUP ═══
+// ═══ FIREBASE SETUP (Firestore + Analytics) ═══
+
+/** @type {firebase.firestore.Firestore|null} Firestore database instance */
 let db = null;
-if (window.FIREBASE_CONFIG && Object.keys(window.FIREBASE_CONFIG).length > 0) {
-    firebase.initializeApp(window.FIREBASE_CONFIG);
-    db = firebase.firestore();
+/** @type {firebase.analytics.Analytics|null} Firebase Analytics instance */
+let analytics = null;
+
+/**
+ * Initializes Firebase services (Firestore with offline persistence + Analytics).
+ * Only runs when a valid FIREBASE_CONFIG is provided in config.js.
+ */
+if (typeof firebase !== 'undefined' && window.FIREBASE_CONFIG && Object.keys(window.FIREBASE_CONFIG).length > 0) {
+    try {
+        firebase.initializeApp(window.FIREBASE_CONFIG);
+        db = firebase.firestore();
+
+        // Enable Firestore offline persistence for offline-first support
+        db.enablePersistence({ synchronizeTabs: true }).catch(function(err) {
+            if (err.code === 'failed-precondition') {
+                console.warn('Firestore persistence unavailable: multiple tabs open.');
+            } else if (err.code === 'unimplemented') {
+                console.warn('Firestore persistence not supported in this browser.');
+            }
+        });
+
+        // Initialize Firebase Analytics for usage tracking
+        if (typeof firebase.analytics === 'function') {
+            analytics = firebase.analytics();
+            analytics.logEvent('app_loaded', { version: '2.0', platform: 'web' });
+        }
+    } catch (e) {
+        console.error("Firebase initialization error:", e);
+    }
 }
 
+/**
+ * Logs a custom event to Firebase Analytics (no-op if Analytics is not initialized).
+ * @param {string} eventName - The event name (e.g., 'quiz_completed')
+ * @param {Object} [params={}] - Optional event parameters
+ */
+function logAnalyticsEvent(eventName, params) {
+    if (analytics) {
+        try {
+            analytics.logEvent(eventName, params || {});
+        } catch (e) {
+            console.warn('Analytics event error:', e.message);
+        }
+    }
+}
+
+/**
+ * Persists user stats to localStorage and syncs to Firestore with server timestamp.
+ * Uses Firestore merge to avoid overwriting other fields.
+ * @returns {Promise<void>}
+ */
 async function saveStats() {
-    localStorage.setItem('pm-stats', JSON.stringify(state.stats));
+    try {
+        localStorage.setItem('pm-stats', JSON.stringify(state.stats));
+    } catch (e) {
+        console.error("localStorage save error:", e);
+    }
     if (db) {
         try {
-            await db.collection('users').doc('local-user').set(state.stats, { merge: true });
+            await db.collection('users').doc('local-user').set(
+                Object.assign({}, state.stats, {
+                    lastUpdated: firebase.firestore.FieldValue.serverTimestamp()
+                }),
+                { merge: true }
+            );
         } catch (e) {
             console.error("Firebase save error:", e);
         }
     }
 }
 
+/**
+ * Saves quiz result history to Firestore as a batch write.
+ * Records score, total questions, percentage, and server timestamp.
+ * @param {number} score - Number of correct answers
+ * @param {number} total - Total number of questions
+ * @returns {Promise<void>}
+ */
+async function saveQuizHistory(score, total) {
+    if (!db) return;
+    try {
+        const batch = db.batch();
+        const quizRef = db.collection('users').doc('local-user')
+            .collection('quizHistory').doc();
+        batch.set(quizRef, {
+            score: score,
+            total: total,
+            percentage: Math.round((score / total) * 100),
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        const userRef = db.collection('users').doc('local-user');
+        batch.update(userRef, {
+            lastQuizAt: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        await batch.commit();
+    } catch (e) {
+        console.error("Firebase quiz history save error:", e);
+    }
+}
+
+/**
+ * Loads user stats from Firestore and updates local state.
+ * Falls back gracefully if Firestore is unavailable.
+ * @returns {Promise<void>}
+ */
 async function loadStatsFromFirebase() {
-    if (db) {
-        try {
-            const doc = await db.collection('users').doc('local-user').get();
-            if (doc.exists) {
-                state.stats = doc.data();
-                localStorage.setItem('pm-stats', JSON.stringify(state.stats));
-                updateProfile();
-            }
-        } catch (e) {
-            console.error("Firebase load error:", e);
+    if (!db) return;
+    try {
+        const doc = await db.collection('users').doc('local-user').get();
+        if (doc.exists) {
+            const data = doc.data();
+            state.stats = {
+                chats: data.chats || 0,
+                quizzes: data.quizzes || 0,
+                streak: data.streak || 0,
+                bestScore: data.bestScore || 0,
+                xp: data.xp || 0
+            };
+            localStorage.setItem('pm-stats', JSON.stringify(state.stats));
+            updateProfile();
         }
+    } catch (e) {
+        console.error("Firebase load error:", e);
+    }
+}
+
+/**
+ * Sets up a Firestore real-time listener on simulation results.
+ * Updates the simulation results UI in real-time when data changes.
+ */
+function setupSimulationListener() {
+    if (!db) return;
+    try {
+        db.collection('simulations').doc('shared-results')
+            .onSnapshot(function(doc) {
+                if (doc.exists) {
+                    const data = doc.data();
+                    const resultsEl = document.getElementById('sim-shared-count');
+                    if (resultsEl && data.totalVotes) {
+                        resultsEl.textContent = data.totalVotes.toLocaleString() + ' votes cast';
+                    }
+                }
+            }, function(error) {
+                console.warn('Simulation listener error:', error.message);
+            });
+    } catch (e) {
+        console.warn('Simulation listener setup error:', e.message);
     }
 }
 
 // ═══ LANGUAGE ═══
+
+/**
+ * Retrieves a translated label for the current language, falling back to English.
+ * @param {string} key - The label key to look up
+ * @returns {string} The translated label string
+ */
 function label(key) {
     return (LANGUAGES[state.lang] && LANGUAGES[state.lang].labels[key]) || LANGUAGES.en.labels[key] || key;
 }
+
+/**
+ * Applies the current language to all UI elements with data-label attributes.
+ * Updates input placeholders and language selector active states.
+ */
 function applyLanguage() {
     document.querySelectorAll('[data-label]').forEach(el => {
         el.textContent = label(el.getAttribute('data-label'));
@@ -113,25 +287,40 @@ function applyLanguage() {
     document.querySelectorAll('.lang-option').forEach(b => b.classList.toggle('active', b.dataset.lang === state.lang));
     renderLanguageGrid();
 }
+
+/**
+ * Changes the application language, persists the choice, and logs the event.
+ * @param {string} lang - Language code (e.g., 'en', 'hi', 'bn', 'ta')
+ */
 function setLanguage(lang) {
     state.lang = lang;
     localStorage.setItem('pm-lang', lang);
     applyLanguage();
-    document.getElementById('lang-dropdown').classList.add('hidden');
+    const dropdown = document.getElementById('lang-dropdown');
+    if (dropdown) dropdown.classList.add('hidden');
+    logAnalyticsEvent('language_changed', { language: lang });
 }
 
 // ═══ NAVIGATION ═══
+
+/**
+ * Switches the active screen and updates sidebar navigation state.
+ * @param {string} name - Screen identifier (e.g., 'chat', 'learn', 'quiz')
+ */
 function switchScreen(name) {
     state.screen = name;
     document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
-    document.getElementById('screen-' + name).classList.add('active');
+    const screenEl = document.getElementById('screen-' + name);
+    if (screenEl) screenEl.classList.add('active');
     document.querySelectorAll('.sidebar-item').forEach(n => {
         const isA = n.dataset.screen === name;
         n.classList.toggle('active', isA);
         n.setAttribute('aria-selected', isA);
     });
-    document.getElementById('page-title').textContent = PAGE_TITLES[name] || name;
+    const titleEl = document.getElementById('page-title');
+    if (titleEl) titleEl.textContent = PAGE_TITLES[name] || name;
     if (name === 'election') renderElectionTab('guide');
+    logAnalyticsEvent('screen_viewed', { screen_name: name });
 }
 
 // ═══ CHAT ═══
@@ -200,10 +389,10 @@ async function getGeminiResponse(input) {
     const body = JSON.stringify({
         system_instruction: { parts: [{ text: GEMINI_CONFIG.systemPrompt }] },
         contents: chatHistory,
-        generationConfig: { maxOutputTokens: 500, temperature: 0.7 }
+        generationConfig: { maxOutputTokens: GEMINI_MAX_TOKENS, temperature: GEMINI_TEMPERATURE }
     });
     
-    for (let attempt = 0; attempt < 3; attempt++) {
+    for (let attempt = 0; attempt < GEMINI_MAX_RETRIES; attempt++) {
         try {
             if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * attempt));
             const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body });
@@ -214,13 +403,13 @@ async function getGeminiResponse(input) {
             if (text) {
                 // Add model response to history
                 chatHistory.push({ role: "model", parts: [{ text: text }] });
-                // Keep history manageable (last 10 turns = 20 messages)
-                if (chatHistory.length > 20) chatHistory = chatHistory.slice(chatHistory.length - 20);
+                // Keep history manageable (last turns)
+                if (chatHistory.length > MAX_CHAT_HISTORY) chatHistory = chatHistory.slice(chatHistory.length - MAX_CHAT_HISTORY);
                 return text;
             }
             throw new Error('Empty Gemini response');
         } catch (err) {
-            if (attempt === 2) { 
+            if (attempt === GEMINI_MAX_RETRIES - 1) { 
                 console.warn('Gemini API fallback:', err.message); 
                 chatHistory.pop(); // Remove failed user message from history
                 return findLocalResponse(input); 
@@ -244,14 +433,26 @@ function findLocalResponse(input) {
     return DEFAULT_RESPONSE.response;
 }
 
-/** Handles sending a chat message. */
+/**
+ * Handles sending a chat message with input validation.
+ * Sanitizes input, updates stats, and fetches AI response.
+ */
 async function handleChat() {
     const inp = document.getElementById('chat-input');
+    if (!inp) return;
     const t = inp.value.trim();
     if (!t) return;
+    if (t.length > CHAT_INPUT_MAX_LENGTH) {
+        addMessage('Please keep your question under ' + CHAT_INPUT_MAX_LENGTH + ' characters.', true);
+        return;
+    }
     addMessage(t, false);
     inp.value = '';
-    state.stats.chats++; state.stats.xp += 5; saveStats(); updateProfile();
+    state.stats.chats++;
+    state.stats.xp += XP_CHAT_MESSAGE;
+    saveStats();
+    updateProfile();
+    logAnalyticsEvent('chat_question_asked', { question_length: t.length });
     showTyping();
     const response = await getGeminiResponse(t);
     addMessage(response, true);
@@ -296,8 +497,10 @@ function initVoiceInput() {
     recognition.onerror = () => voiceBtn.classList.remove('recording');
     recognition.onend = () => voiceBtn.classList.remove('recording');
 }
+/** Renders quick-reply chip buttons in the chat UI. */
 function renderQuickReplies() {
     const c = document.getElementById('quick-replies');
+    if (!c) return;
     c.innerHTML = '';
     QUICK_REPLIES.forEach(t => {
         const b = document.createElement('button');
@@ -306,6 +509,8 @@ function renderQuickReplies() {
         c.appendChild(b);
     });
 }
+
+/** Renders the topic sidebar with icon-labeled buttons. */
 function renderTopicSidebar() {
     const c = document.getElementById('topic-list');
     if (!c) return;
@@ -320,8 +525,15 @@ function renderTopicSidebar() {
 }
 
 // ═══ LEARN ═══
+
+/**
+ * Displays a learn topic section with dynamic content.
+ * @param {string} topic - Topic identifier ('roles', 'myths', 'process', 'simulation')
+ */
 function showLearnTopic(topic) {
     const content = document.getElementById('learn-content');
+    if (!content) return;
+    logAnalyticsEvent('learn_topic_viewed', { topic: topic });
     content.classList.remove('hidden');
     let html = '<button class="learn-back" id="learn-back"><i class="fa-solid fa-arrow-left"></i> Back to topics</button>';
     if (topic === 'roles') {
@@ -392,19 +604,31 @@ function initSimulation() {
         h += `<div class="sim-winner">🏆 Winner: ${SIM_CANDIDATES[wi].name} (${SIM_CANDIDATES[wi].party})</div><p style="color:var(--text-muted);font-size:.85rem;margin-top:8px;">In FPTP, the candidate with the most votes wins — no minimum percentage needed!</p></div>`;
         document.getElementById('sim-results').innerHTML = h;
         setTimeout(() => document.querySelectorAll('.sim-bar-fill').forEach(b => b.style.width = b.dataset.width), 100);
-        state.stats.xp += 15; saveStats(); updateProfile();
+        state.stats.xp += XP_SIMULATION_VOTE;
+        saveStats();
+        updateProfile();
+        logAnalyticsEvent('simulation_voted', { candidate: SIM_CANDIDATES[sel].name });
     });
 }
 
 // ═══ QUIZ ═══
+
+/**
+ * Starts a new quiz session with randomized questions.
+ * Shuffles the question bank and selects QUESTIONS_PER_QUIZ questions.
+ */
 function startQuiz() {
     const sh = [...QUIZ_QUESTIONS].sort(() => Math.random()-.5);
-    state.quiz = { current:0, score:0, questions:sh.slice(0,5), answered:false };
+    state.quiz = { current:0, score:0, questions:sh.slice(0, QUESTIONS_PER_QUIZ), answered:false };
     document.getElementById('quiz-start').classList.add('hidden');
     document.getElementById('quiz-results').classList.add('hidden');
     document.getElementById('quiz-play').classList.remove('hidden');
     renderQuestion();
 }
+
+/**
+ * Renders the current quiz question and its answer options.
+ */
 function renderQuestion() {
     const q = state.quiz.questions[state.quiz.current], i = state.quiz.current, t = state.quiz.questions.length;
     document.getElementById('quiz-progress-fill').style.width = ((i/t)*100)+'%';
@@ -424,6 +648,12 @@ function renderQuestion() {
         oe.appendChild(b);
     });
 }
+
+/**
+ * Handles quiz answer selection, highlights correct/wrong options.
+ * @param {number} sel - Index of the selected option
+ * @param {number} cor - Index of the correct option
+ */
 function answerQuiz(sel, cor) {
     if (state.quiz.answered) return;
     state.quiz.answered = true;
@@ -438,11 +668,20 @@ function answerQuiz(sel, cor) {
     fb.classList.remove('hidden');
     document.getElementById('quiz-next').classList.remove('hidden');
 }
+
+/**
+ * Advances to the next quiz question or shows results if quiz is complete.
+ */
 function nextQuestion() {
     state.quiz.current++;
     if (state.quiz.current >= state.quiz.questions.length) showQuizResults();
     else renderQuestion();
 }
+
+/**
+ * Displays quiz results with score summary and updates user stats.
+ * Saves quiz history to Firestore and logs analytics event.
+ */
 function showQuizResults() {
     document.getElementById('quiz-play').classList.add('hidden');
     const r = document.getElementById('quiz-results'); r.classList.remove('hidden');
@@ -452,17 +691,27 @@ function showQuizResults() {
     document.getElementById('quiz-results-icon').textContent = ic;
     document.getElementById('quiz-results-title').textContent = ti;
     document.getElementById('quiz-results-score').textContent = `You scored ${s}/${t} (${p}%)`;
-    state.stats.quizzes++; state.stats.xp += s*10;
+    state.stats.quizzes++;
+    state.stats.xp += s * XP_QUIZ_CORRECT;
     if (s > state.stats.bestScore) state.stats.bestScore = s;
-    if (s >= 3) state.stats.streak++; else state.stats.streak = 0;
-    saveStats(); updateProfile();
+    if (s >= STREAK_THRESHOLD) state.stats.streak++; else state.stats.streak = 0;
+    saveStats();
+    updateProfile();
+    saveQuizHistory(s, t);
+    logAnalyticsEvent('quiz_completed', { score: s, total: t, percentage: p });
     document.getElementById('streak-display').textContent = state.stats.streak;
     document.getElementById('best-score-display').textContent = state.stats.bestScore;
 }
 
 // ═══ ELECTION ═══
+
+/**
+ * Renders the election mode tab content (guide, docs, or tips).
+ * @param {string} tab - Tab identifier ('guide', 'docs', 'tips')
+ */
 function renderElectionTab(tab) {
     const c = document.getElementById('election-content');
+    if (!c) return;
     document.querySelectorAll('.election-tab').forEach(t => t.classList.toggle('active', t.dataset.tab === tab));
     if (tab === 'guide') {
         c.innerHTML = VOTING_GUIDE_STEPS.map(s => `<div class="guide-step"><div class="guide-step-header"><div class="guide-step-icon"><i class="fa-solid ${s.icon}"></i></div><span class="guide-step-title">${s.title}</span></div><ul class="guide-items">${s.items.map(i=>`<li>${i}</li>`).join('')}</ul></div>`).join('');
@@ -484,20 +733,36 @@ function renderElectionTab(tab) {
 }
 
 // ═══ PROFILE ═══
+
+/**
+ * Updates all profile UI elements with current stats (chats, quizzes, streak, XP, level).
+ */
 function updateProfile() {
     const s = state.stats;
-    document.getElementById('stat-chats').textContent = s.chats;
-    document.getElementById('stat-quizzes').textContent = s.quizzes;
-    document.getElementById('stat-streak').textContent = s.streak;
-    document.getElementById('streak-display').textContent = s.streak;
-    document.getElementById('best-score-display').textContent = s.bestScore;
+    const statChats = document.getElementById('stat-chats');
+    const statQuizzes = document.getElementById('stat-quizzes');
+    const statStreak = document.getElementById('stat-streak');
+    const streakDisplay = document.getElementById('streak-display');
+    const bestScoreDisplay = document.getElementById('best-score-display');
+    if (statChats) statChats.textContent = s.chats;
+    if (statQuizzes) statQuizzes.textContent = s.quizzes;
+    if (statStreak) statStreak.textContent = s.streak;
+    if (streakDisplay) streakDisplay.textContent = s.streak;
+    if (bestScoreDisplay) bestScoreDisplay.textContent = s.bestScore;
     let ln, lc;
     if (s.xp<100){ln=label('beginner');lc='beginner';}else if(s.xp<300){ln=label('intermediate');lc='intermediate';}else{ln=label('advanced');lc='advanced';}
-    const b = document.querySelector('.level-badge'); b.textContent = ln; b.className = 'level-badge '+lc;
+    const b = document.querySelector('.level-badge');
+    if (b) { b.textContent = ln; b.className = 'level-badge '+lc; }
     const mx = s.xp<100?100:(s.xp<300?300:500);
-    document.getElementById('profile-xp-fill').style.width = Math.min((s.xp/mx)*100,100)+'%';
-    document.getElementById('profile-xp-text').textContent = `${s.xp} / ${mx} XP`;
+    const xpFill = document.getElementById('profile-xp-fill');
+    const xpText = document.getElementById('profile-xp-text');
+    if (xpFill) xpFill.style.width = Math.min((s.xp/mx)*100,100)+'%';
+    if (xpText) xpText.textContent = `${s.xp} / ${mx} XP`;
 }
+
+/**
+ * Renders the language selection grid in the profile section.
+ */
 function renderLanguageGrid() {
     const g = document.getElementById('language-grid'); if (!g) return;
     g.innerHTML = '';
@@ -548,7 +813,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     applyLanguage();
     updateProfile();
-    
-    // Load from Firebase if available
+
+    // Load from Firebase if available and setup real-time listeners
     loadStatsFromFirebase();
+    setupSimulationListener();
 });
