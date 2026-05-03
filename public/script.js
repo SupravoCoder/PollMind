@@ -178,9 +178,11 @@ function showTyping() {
     c.scrollTop = c.scrollHeight;
 }
 
+let chatHistory = [];
+
 /**
  * Calls the Google Gemini API for AI-powered responses.
- * Includes retry with backoff for 429 rate limits.
+ * Includes retry with backoff for 429 rate limits and conversation memory.
  * Falls back to local keyword matching if API key is not set or all retries fail.
  * @param {string} input - User's question
  * @returns {Promise<string>} The AI response text
@@ -190,12 +192,17 @@ async function getGeminiResponse(input) {
         console.warn('PollMind: Gemini API key not set. Copy public/config.example.js to public/config.js and add your key to enable AI responses.');
         return findLocalResponse(input);
     }
+    
+    // Add user message to history
+    chatHistory.push({ role: "user", parts: [{ text: input }] });
+    
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_CONFIG.model}:generateContent?key=${GEMINI_CONFIG.apiKey}`;
     const body = JSON.stringify({
         system_instruction: { parts: [{ text: GEMINI_CONFIG.systemPrompt }] },
-        contents: [{ parts: [{ text: input }] }],
+        contents: chatHistory,
         generationConfig: { maxOutputTokens: 500, temperature: 0.7 }
     });
+    
     for (let attempt = 0; attempt < 3; attempt++) {
         try {
             if (attempt > 0) await new Promise(r => setTimeout(r, 1000 * attempt));
@@ -204,12 +211,23 @@ async function getGeminiResponse(input) {
             if (!res.ok) throw new Error(`Gemini API error: ${res.status}`);
             const data = await res.json();
             const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) return text;
+            if (text) {
+                // Add model response to history
+                chatHistory.push({ role: "model", parts: [{ text: text }] });
+                // Keep history manageable (last 10 turns = 20 messages)
+                if (chatHistory.length > 20) chatHistory = chatHistory.slice(chatHistory.length - 20);
+                return text;
+            }
             throw new Error('Empty Gemini response');
         } catch (err) {
-            if (attempt === 2) { console.warn('Gemini API fallback:', err.message); return findLocalResponse(input); }
+            if (attempt === 2) { 
+                console.warn('Gemini API fallback:', err.message); 
+                chatHistory.pop(); // Remove failed user message from history
+                return findLocalResponse(input); 
+            }
         }
     }
+    chatHistory.pop();
     return findLocalResponse(input);
 }
 
